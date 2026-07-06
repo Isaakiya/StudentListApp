@@ -109,7 +109,7 @@ app.post('/editStudent/:id', (req, res) => {
     // Note: retaining 'quantity' for dob and 'price' for contact to match your form setup [cite: 5, 6]
     const { name, quantity, price, image } = req.body; 
     
-    const sql = 'UPDATE student SET studentName = ?, dob = ?, contact = ?, image = ? WHERE studentId = ?';
+    const sql = 'UPDATE student SET name = ?, dob = ?, contact = ?, image = ? WHERE studentId = ?';
 
     // Update the student record in the database
     connection.query(sql, [name, quantity, price, image, studentId], (error, results) => {
