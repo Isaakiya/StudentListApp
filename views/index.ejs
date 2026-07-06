@@ -28,7 +28,7 @@
     <div class="text-center"><h2>Students from Student List App Database</h2></div>
     <br>
   
-    <table class="table table-hover small text-center">
+    <table class="table table-hover small text-center align-middle">
       <thead>
           <tr>
             <th width="100">Student Name</th>
@@ -44,11 +44,13 @@
           <tr>
             <td><a href="/student/<%= student[i].studentId %>"><%= student[i].name %></a></td>
             <td><img src="<%= student[i].image %>" width="20%"></td>
-            <td><%= student[i].dob %></td>
+            
+            <td style="max-width: 70px; word-wrap: break-word;">
+              <%= new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(new Date(student[i].dob)) %>
+            </td>
+
             <td><%= student[i].contact %></td>
-            <!-- Edit Link -->
             <td><a href="/editStudent/<%= student[i].studentId %>">Edit</a></td>
-            <!-- Delete Link -->
             <td><a href="/deleteStudent/<%= student[i].studentId %>"
                 onclick="return confirm('Are you sure you want to delete this student?')">Delete</a></td>
           </tr>
