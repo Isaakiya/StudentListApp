@@ -29,7 +29,7 @@ app.get('/', (req, res) => {
     connection.query('SELECT * FROM student', (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
-            return res.send('Error retrieving products');
+            return res.send('Error retrieving students');
         }
         // Assuming you have an 'index.ejs' file in your views folder
         res.render('index', { student: results });
@@ -73,6 +73,69 @@ app.post('/addStudent', (req, res) => {
             res.send('Error adding student');
         } else {
             // Send a success response
+            res.redirect('/');
+        }
+    });
+});
+
+// 1. GET Route: Display the edit form populated with current student data
+app.get('/editStudent/:id', (req, res) => {
+    const studentId = req.params.id;
+    const sql = 'SELECT * FROM student WHERE studentId = ?';
+
+    // Fetch data from MySQL based on the student ID 
+    connection.query(sql, [studentId], (error, results) => {
+        if (error) {
+            console.error('Database query error:', error.message);
+            return res.send('Error retrieving student by ID');
+        }
+        
+        // Check if any student with the given ID was found 
+        if (results.length > 0) {
+            // Render HTML page with the student data 
+            res.render('editStudent', { student: results[0] });
+        } else {
+            // If no student with the given ID was found
+            res.send('Student not found');
+        }
+    });
+});
+
+// 2. POST Route: Handle submission of the update form
+app.post('/editStudent/:id', (req, res) => {
+    const studentId = req.params.id;
+    
+    // Extract student data from the request body 
+    // Note: retaining 'quantity' for dob and 'price' for contact to match your form setup [cite: 5, 6]
+    const { name, quantity, price, image } = req.body; 
+    
+    const sql = 'UPDATE student SET studentName = ?, dob = ?, contact = ?, image = ? WHERE studentId = ?';
+
+    // Update the student record in the database
+    connection.query(sql, [name, quantity, price, image, studentId], (error, results) => {
+        if (error) {
+            // Handle any error that occurs during the database operation
+            console.error("Error updating student:", error);
+            res.send('Error updating student');
+        } else {
+            // Send a success response by redirecting to home
+            res.redirect('/');
+        }
+    });
+});
+
+// 3. GET Route: Delete a student record
+app.get('/deleteStudent/:id', (req, res) => {
+    const studentId = req.params.id;
+    const sql = 'DELETE FROM student WHERE studentId = ?';
+
+    connection.query(sql, [studentId], (error, results) => {
+        if (error) {
+            // Handle any error that occurs during the database operation
+            console.error("Error deleting student:", error);
+            res.send('Error deleting student');
+        } else {
+            // Send a success response by redirecting to home
             res.redirect('/');
         }
     });
