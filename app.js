@@ -1,145 +1,171 @@
 const express = require('express');
 const mysql = require('mysql2');
+const multer = require('multer');
 const app = express();
-// Create MySQL connection
+
+// ==========================================
+// 1. Database Connection
+// ==========================================
 const connection = mysql.createConnection({
- host: 'localhost',
- user: 'root',
- password: 'Iisssfamily',
- database: 'c237_studentlistapp'
+    host: 'localhost',
+    user: 'root',
+    password: 'Iisssfamily',
+    database: 'c237_studentlistapp'
 });
+
 connection.connect((err) => {
- if (err) {
- console.error('Error connecting to MySQL:', err);
- return;
- }
- console.log('Connected to MySQL database');
+    if (err) {
+        console.error('Error connecting to MySQL:', err);
+        return;
+    }
+    console.log('Connected to MySQL database');
 });
-// Set up view engine
+
+// ==========================================
+// 2. Middleware & View Engine Setup
+// ==========================================
 app.set('view engine', 'ejs');
-// enable static files
 app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
 
-app.use(express.urlencoded({
-    extended: true 
-}));
+// ==========================================
+// 3. Multer Configuration (Image Uploads)
+// ==========================================
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'public/images'); 
+    },
+    filename: (req, file, cb) => {
+        cb(null, file.originalname); 
+    }
+});
 
+const upload = multer({ storage: storage });
+
+// ==========================================
+// 4. Routes (CRUD Operations)
+// ==========================================
+
+// READ: Display all students on the index page
 app.get('/', (req, res) => {
-    // Example: Fetch all students to display on the home page
     connection.query('SELECT * FROM student', (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving students');
         }
-        // Assuming you have an 'index.ejs' file in your views folder
-        res.render('index', { student: results });
+        // FIXED: Changed key 'student' to 'students' to match index.ejs loop
+        res.render('index', { students: results });
     });
 });
 
+// READ: Display specific student by ID
 app.get('/student/:id', (req, res) => {
-    // Extract the student ID from the request parameters
     const studentId = req.params.id;
     const sql = 'SELECT * FROM student WHERE studentId = ?';
-    // Fetch data from MySQL based on the student ID
-    connection.query( sql , [studentId], (error, results) => {
+    
+    connection.query(sql, [studentId], (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error Retrieving student by ID');
         }
-        // Check if any student with the given ID was found
+        
         if (results.length > 0) {
-            // Render HTML page with the student data
             res.render('student', { student: results[0] });
         } else {
-            // If no student with the given ID was found
             res.send('Student not found');
         }
     });
 });
 
+// CREATE: Render the add student form
 app.get('/addStudent', (req, res) => {
     res.render('addStudent');
 });
 
-app.post('/addStudent', (req, res) => {
-    // Extract student data from the request body
-    const { name, quantity, price, image } = req.body;
-    const sql = 'INSERT INTO student (studentName, dob, contact, image) VALUES (?, ?, ?, ?)';
-    // Insert the new student into the database
-    connection.query( sql , [name, quantity, price, image], (error, results) => {
+// CREATE: Process the add student form
+app.post('/addStudent', upload.single('image'), (req, res) => {
+    // FIXED: Extracted fields matching addStudent.ejs input fields (dob, contact)
+    const { name, dob, contact } = req.body; 
+    let image = req.body.image; 
+    
+    // If a file was uploaded via multer, use that filename instead
+    if (req.file) {
+        image = req.file.originalname; 
+    }
+
+    // Ensure table columns match your DB schema (using 'name' here to align with EJS placeholders)
+    const sql = 'INSERT INTO student (name, dob, contact, image) VALUES (?, ?, ?, ?)';
+    
+    connection.query(sql, [name, dob, contact, image], (error, results) => {
         if (error) {
-            // Handle any error that occurs during the database operation
             console.error("Error adding student:", error);
             res.send('Error adding student');
         } else {
-            // Send a success response
             res.redirect('/');
         }
     });
 });
 
-// 1. GET Route: Display the edit form populated with current student data
+// UPDATE: Render the edit form populated with current student data
 app.get('/editStudent/:id', (req, res) => {
     const studentId = req.params.id;
     const sql = 'SELECT * FROM student WHERE studentId = ?';
 
-    // Fetch data from MySQL based on the student ID 
     connection.query(sql, [studentId], (error, results) => {
         if (error) {
             console.error('Database query error:', error.message);
             return res.send('Error retrieving student by ID');
         }
         
-        // Check if any student with the given ID was found 
         if (results.length > 0) {
-            // Render HTML page with the student data 
             res.render('editStudent', { student: results[0] });
         } else {
-            // If no student with the given ID was found
             res.send('Student not found');
         }
     });
 });
 
-// 2. POST Route: Handle submission of the update form
-app.post('/editStudent/:id', (req, res) => {
+// UPDATE: Handle submission of the update form
+app.post('/editStudent/:id', upload.single('image'), (req, res) => {
     const studentId = req.params.id;
-    
-    // Extract student data from the request body 
-    // Note: retaining 'quantity' for dob and 'price' for contact to match your form setup [cite: 5, 6]
-    const { name, quantity, price, image } = req.body; 
+    // FIXED: Extracted fields matching editStudent.ejs input fields (dob, contact)
+    const { name, dob, contact } = req.body; 
+    let image = req.body.currentImage; // Fallback to existing image name if not updated
+
+    // Override with new uploaded file if one exists
+    if (req.file) {
+        image = req.file.originalname;
+    }
     
     const sql = 'UPDATE student SET name = ?, dob = ?, contact = ?, image = ? WHERE studentId = ?';
 
-    // Update the student record in the database
-    connection.query(sql, [name, quantity, price, image, studentId], (error, results) => {
+    connection.query(sql, [name, dob, contact, image, studentId], (error, results) => {
         if (error) {
-            // Handle any error that occurs during the database operation
             console.error("Error updating student:", error);
             res.send('Error updating student');
         } else {
-            // Send a success response by redirecting to home
             res.redirect('/');
         }
     });
 });
 
-// 3. GET Route: Delete a student record
+// DELETE: Remove a student record
 app.get('/deleteStudent/:id', (req, res) => {
     const studentId = req.params.id;
     const sql = 'DELETE FROM student WHERE studentId = ?';
 
     connection.query(sql, [studentId], (error, results) => {
         if (error) {
-            // Handle any error that occurs during the database operation
             console.error("Error deleting student:", error);
             res.send('Error deleting student');
         } else {
-            // Send a success response by redirecting to home
             res.redirect('/');
         }
     });
 });
 
+// ==========================================
+// 5. Server Initialization
+// ==========================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
